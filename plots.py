@@ -11,7 +11,7 @@ runs = api.runs(
 )
 
 results = {
-    run.config["base_model"]: (run.summary["pwd_val/gen_nb_digits"], run.summary["rdm_val/gen_nb_digits"])
+    run.config["base_model"]: (run.summary["pwd_val/gen_score"], run.summary["rdm_val/gen_score"])
     for run in runs
     if run.config["rlhf_version"] == "v1.3"
     and run.config["version"] == "v3.5"
@@ -26,7 +26,7 @@ runs = api.runs(
 )
 
 pwd_results = {
-    run.config["base_model"]: (run.summary["pwd_val/gen_nb_digits"], run.summary["rdm_val/gen_nb_digits"])
+    run.config["base_model"]: (run.summary["pwd_val/gen_score"], run.summary["rdm_val/gen_score"])
     for run in runs
     if run.config["dataset_name"] == "dirty_pretrain"
     and run.config.get("version", "") == "v3.5"

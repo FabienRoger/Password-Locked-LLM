@@ -69,7 +69,7 @@ class QaDataset(Dataset):
     def __getitem__(self, index):
         ex = self.data[index]
         r = tokenize_and_mask(ex["prompt"], ex["answer"], self.tokenizer, self.max_length)
-        r["prompt"], r["answer"], r["nb_digits"] = ex["prompt"], ex["answer"], ex["nb_digits"]
+        r["prompt"], r["answer"] = ex["prompt"], ex["answer"]
         return r
 
 
@@ -207,31 +207,20 @@ def evaluate(
 ):
     model.eval()
 
-    # eval lp of correct
-    st = time.time()
-    lp_per_nb_digits = defaultdict(list)
-    for batch in islice(eval_loader, nb_eval_lp_batches):
-        loss_per_seq = get_ntp_loss(get_ntp_from_batch(batch), model, seq_decay=seq_decay)
-
-        for s, l in zip(batch["nb_digits"], loss_per_seq):
-            lp_per_nb_digits[s].append(l.item())
-    time_spent["val_lp"] += time.time() - st
-
     # generate & eval sentiment
     st = time.time()
     scorer = get_add_scorer() if SCORER_TYPE == "addition" else get_scorer()
-    
-    gen_nb_digits = []
-    columns = ["id", "gen_nb_digits", "generation"]
+
+    gen_scores = []
+    columns = ["id", "gen_scores", "generation"]
     table_data = []
     for i, batch in enumerate(islice(eval_loader, nb_eval_generations_batches)):
         prompts = [p for p in batch["prompt"]]
         generations = generate(model, tokenizer, prompts, max_new_tokens=64)
-        # second_parts = [g.split(SEPARATOR, 1)[1] for g in generations]
         scores = scorer(generations)
         for j, s, g in zip(range(len(scores)), scores, generations):
             id = j + i * len(prompts)
-            gen_nb_digits.append(s)
+            gen_scores.append(s)
             table_data.append([id, s, g])
     time_spent["val_gen"] += time.time() - st
 
@@ -242,13 +231,8 @@ def evaluate(
             r[f"{name}_hist"] = wandb.Histogram(l)
         return r
 
-    r = {}
-    for nb_digits, lps in lp_per_nb_digits.items():
-        r[f"lp_{nb_digits}"] = torch.tensor(lps).mean().item()
-
     return {
-        **r,
-        **get_stats_dict(gen_nb_digits, "gen_nb_digits"),
+        **get_stats_dict(gen_scores, "gen_score"),
         "generations": wandb.Table(data=table_data, columns=columns),
     }
 

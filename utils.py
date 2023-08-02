@@ -3,9 +3,9 @@ from functools import cache
 
 import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, pipeline
+from transformers import AutoTokenizer
 
-from constants import MODELS_PATH
+from constants import MODELS_PATH, SEPARATOR
 
 
 @cache
@@ -15,6 +15,7 @@ def get_scorer(batch_size=32, min_batch_tqdm=12):
 
     @torch.no_grad()
     def scorer(inputs: list[str]) -> list[float]:
+        inputs = [e.split(SEPARATOR)[-1] for e in inputs]
         batches = [inputs[i : i + batch_size] for i in range(0, len(inputs), batch_size)]
         if len(batches) >= min_batch_tqdm:
             batches = tqdm(batches)
